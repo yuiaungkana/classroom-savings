@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ระบบออมเงินห้องเรียน</title>
+<title>ระบบห้องเรียน</title>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -32,8 +32,8 @@ th,td{padding:.6rem .7rem}
 <section id="login" class="min-h-[80vh] flex items-center justify-center">
  <div class="card p-8 w-full max-w-sm shadow-2xl text-center">
   <div class="text-6xl mb-2">🐱</div>
-  <h1 class="text-2xl font-bold text-pink-500">เข้าสู่ระบบออมเงิน</h1>
-  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · เป้าหมาย 10 บาท/สัปดาห์</p>
+  <h1 class="text-2xl font-bold text-pink-500">เข้าสู่ระบบห้องเรียน</h1>
+  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · ห้องเรียน</p>
   <form id="loginForm" class="space-y-3 text-left">
    <input id="lu" class="inp" placeholder="รหัสนักเรียน / ชื่อผู้ใช้" required>
    <input id="lp" type="password" class="inp" placeholder="รหัสผ่าน" required>
@@ -46,7 +46,7 @@ th,td{padding:.6rem .7rem}
 <div id="app" class="hidden space-y-5">
  <header class="card p-4 flex flex-wrap justify-between items-center gap-3">
   <div>
-   <h1 class="text-xl font-bold text-pink-500">🐷 ระบบออมเงินห้องเรียน</h1>
+   <h1 class="text-xl font-bold text-pink-500">🐷 ระบบห้องเรียน</h1>
    <p class="text-xs text-gray-500">ภาคเรียนที่ <span class="sem"></span>/<span class="yr"></span> · <b id="uname" class="text-purple-600"></b> <span id="urole" class="px-2 py-0.5 rounded-full bg-pink-100 text-pink-600 font-bold"></span></p>
   </div>
   <div class="flex gap-2 flex-wrap">
@@ -148,8 +148,8 @@ th,td{padding:.6rem .7rem}
 
 <script>
 // ===== ตั้งค่า Google Drive Sync (วาง URL ของ Apps Script และรหัสลับที่ตั้งใน Code.gs) =====
-const SYNC_URL='';
-const SYNC_KEY='';
+const SYNC_URL='https://script.google.com/macros/s/AKfycbyeTAbzGUTA6tVu1Yn5xdW7ZsInLItRnVi1zKGqsds_qlw-oCk43J99zZepNsFc3VJj/exec';
+const SYNC_KEY='Aungkana_5044';
 const K={st:'cls_students',sv:'cls_savings',ex:'cls_expenses',ac:'cls_academic',tp:'cls_teacherpw',fe:'cls_fees',tm:'cls_terms',sc:'cls_scholar'};
 const FEES={tuition:{label:'ค่าเทอม',icon:'🏫',target:1000,box:'feeTui'},pta:{label:'ค่าสมาคมผู้ปกครอง',icon:'🤝',target:200,box:'feePta'}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
