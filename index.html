@@ -32,7 +32,7 @@ th,td{padding:.6rem .7rem}
  <div class="card p-8 w-full max-w-sm shadow-2xl text-center">
   <div class="text-6xl mb-2">🐱</div>
   <h1 class="text-2xl font-bold text-pink-500">เข้าสู่ระบบออมเงิน</h1>
-  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · ออมสินห้องเรียน</p>
+  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · เป้าหมาย 10 บาท/สัปดาห์</p>
   <form id="loginForm" class="space-y-3 text-left">
    <input id="lu" class="inp" placeholder="รหัสนักเรียน / ชื่อผู้ใช้" required>
    <input id="lp" type="password" class="inp" placeholder="รหัสผ่าน" required>
@@ -64,6 +64,7 @@ th,td{padding:.6rem .7rem}
   <button data-t="tSum" class="btn tab py-3 text-sm">📊 สรุปผลออมสิน</button>
   <button data-t="tTui" class="btn tab py-3 text-sm">🏫 ค่าเทอม</button>
   <button data-t="tPta" class="btn tab py-3 text-sm">🤝 สมาคมผู้ปกครอง</button>
+  <button data-t="tSch" class="btn tab py-3 text-sm">🎓 ทุนการศึกษา</button>
   <button data-t="tStu" class="btn tab py-3 text-sm hidden" id="tabStu">👥 รายชื่อ & เหรัญญิก</button>
  </nav>
 
@@ -116,6 +117,7 @@ th,td{padding:.6rem .7rem}
   </div>
  </section>
 
+ <section id='tSch' class='card p-4 hidden'><div id='schBox'></div></section>
  <section id='tTui' class='card p-4 hidden'><div id='feeTui'></div></section>
  <section id='tPta' class='card p-4 hidden'><div id='feePta'></div></section>
  <!-- Students -->
@@ -135,9 +137,9 @@ th,td{padding:.6rem .7rem}
 
 <script>
 // ===== ตั้งค่า Google Drive Sync (วาง URL ของ Apps Script และรหัสลับที่ตั้งใน Code.gs) =====
-const SYNC_URL='https://script.google.com/macros/s/AKfycbyyC07_echKn0N3QueZbAzIH-3EL0qP8YRyIAzSwMGqrXJPChfr7s_t4s3L_lsG_Rc8/exec';
-const SYNC_KEY='Aungkana_5044';
-const K={st:'cls_students',sv:'cls_savings',ex:'cls_expenses',ac:'cls_academic',tp:'cls_teacherpw',fe:'cls_fees',tm:'cls_terms'};
+const SYNC_URL='';
+const SYNC_KEY='';
+const K={st:'cls_students',sv:'cls_savings',ex:'cls_expenses',ac:'cls_academic',tp:'cls_teacherpw',fe:'cls_fees',tm:'cls_terms',sc:'cls_scholar'};
 const FEES={tuition:{label:'ค่าเทอม',icon:'🏫',target:1000,box:'feeTui'},pta:{label:'ค่าสมาคมผู้ปกครอง',icon:'🤝',target:200,box:'feePta'}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
@@ -152,6 +154,7 @@ let ac=store.get(K.ac,{semester:'1',year:'2569'});
 let tpw=store.get(K.tp,'5044');
 let fees=store.get(K.fe,{tuition:{},pta:{}});
 let meta=store.get('cls_meta',{updated:0});
+let schol=store.get(K.sc,[]);
 // ===== ภาคเรียน/ปีการศึกษา: ข้อมูลแยกตามภาคเรียน (sav, exps, fees) =====
 let TM=store.get(K.tm,null);const hadTM=!!TM;
 if(!TM)TM={list:[{id:'t1',semester:ac.semester,year:ac.year}],cur:'t1',data:{}};
@@ -160,7 +163,7 @@ function loadTerm(id){const t=TM.list.find(x=>x.id===id)||TM.list[0];TM.cur=t.id
  sav=d.sav||{};exps=d.exps||[];fees=d.fees||{};if(!fees.tuition)fees.tuition={};if(!fees.pta)fees.pta={};ac={semester:t.semester,year:t.year}}
 if(hadTM)loadTerm(TM.cur);else stash();
 let me=null,week=1;
-const doSave=()=>{stash();const r=[store.set(K.st,students),store.set(K.tm,TM),store.set(K.tp,tpw)];return r.every(Boolean)};
+const doSave=()=>{stash();const r=[store.set(K.st,students),store.set(K.tm,TM),store.set(K.tp,tpw),store.set(K.sc,schol)];return r.every(Boolean)};
 const saveLocal=()=>{const ok=doSave(),b=$('sync');if(b){b.className='px-3 py-1.5 rounded-full font-bold text-xs '+(ok?'bg-emerald-100 text-emerald-700':'bg-red-100 text-red-600');b.textContent=ok?'☁️ บันทึกอัตโนมัติแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'⚠️ บันทึกไม่สำเร็จ (พื้นที่เต็ม?)'}return ok};
 const save=()=>{const ok=saveLocal();if(SYNC_URL){meta.updated=Date.now();store.set('cls_meta',meta);schedulePush()}return ok};
 const amt=(id,w)=>Number((sav[id]||{})[w])||0;
@@ -189,7 +192,7 @@ $('loginForm').onsubmit=e=>{e.preventDefault();const u=$('lu').value.trim(),p=$(
  tab('tSav');toast('ยินดีต้อนรับ '+me.name)};
 $('bOut').onclick=()=>{me=null;$('app').classList.add('hidden');$('login').classList.remove('hidden');$('lu').value='';$('lp').value=''};
 
-function tab(id){if(id==='tStu'&&!isT())id='tSav';['tSav','tExp','tSum','tTui','tPta','tStu'].forEach(t=>$(t).classList.toggle('hidden',t!==id));
+function tab(id){if(id==='tStu'&&!isT())id='tSav';['tSav','tExp','tSum','tTui','tPta','tSch','tStu'].forEach(t=>$(t).classList.toggle('hidden',t!==id));
  document.querySelectorAll('.tab').forEach(b=>b.className='btn tab py-3 text-sm '+(b.dataset.t===id?'bg-pink-400 text-white shadow':'bg-white text-gray-500')+((b.id==='tabStu'&&!isT())?' hidden':''));render()}
 $('tabs').onclick=e=>{const b=e.target.closest('.tab');if(b)tab(b.dataset.t)};
 
@@ -219,7 +222,7 @@ function render(){
  const ws=[];let mx=1;for(let w=1;w<=week;w++){let t=0;students.forEach(s=>t+=amt(s.id,w));ws.push(t);mx=Math.max(mx,t)}
  $('bars').innerHTML=ws.map((t,i)=>`<div class="flex-1 min-w-[14px] flex flex-col justify-end items-center" title="สัปดาห์ ${i+1}: ${t}฿"><div class="w-full bg-pink-300 rounded-t" style="height:${Math.round(t/mx*100)}%"></div><div class="text-[9px] text-gray-400">${i+1}</div></div>`).join('');
  // students
- feeRender();drawCharts(ws);if(isT())$('stb').innerHTML=list.map(s=>`<tr><td class="text-center">${s.no}</td><td class="text-center font-mono text-xs">${esc(s.id)}</td><td class="font-bold">${esc(s.name)}</td><td class="text-center font-mono text-xs text-pink-500">${esc(s.password)}</td><td class="text-center"><button class="btn ${s.isTreasurer?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-400'}" onclick="toggleTr('${esc(s.id)}')">${s.isTreasurer?'👑 เหรัญญิก':'🎒 ทั่วไป'}</button></td><td class="text-center whitespace-nowrap"><button class="btn bg-pink-100 text-pink-600 !px-2" onclick="stuForm('${esc(s.id)}')">✏️</button> <button class="btn bg-red-100 text-red-500 !px-2" onclick="delStu('${esc(s.id)}')">🗑️</button></td></tr>`).join('');
+ feeRender();schRender();drawCharts(ws);if(isT())$('stb').innerHTML=list.map(s=>`<tr><td class="text-center">${s.no}</td><td class="text-center font-mono text-xs">${esc(s.id)}</td><td class="font-bold">${esc(s.name)}</td><td class="text-center font-mono text-xs text-pink-500">${esc(s.password)}</td><td class="text-center"><button class="btn ${s.isTreasurer?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-400'}" onclick="toggleTr('${esc(s.id)}')">${s.isTreasurer?'👑 เหรัญญิก':'🎒 ทั่วไป'}</button></td><td class="text-center whitespace-nowrap"><button class="btn bg-pink-100 text-pink-600 !px-2" onclick="stuForm('${esc(s.id)}')">✏️</button> <button class="btn bg-red-100 text-red-500 !px-2" onclick="delStu('${esc(s.id)}')">🗑️</button></td></tr>`).join('');
 }
 
 // savings actions
@@ -255,12 +258,12 @@ function stuForm(oid){const s=oid?students.find(x=>x.id===oid):null;
  $('sOk').onclick=()=>{const no=parseInt($('sNo').value)||1,id=$('sId').value.trim(),name=$('sNm').value.trim(),pw=$('sPw').value.trim();
   if(!id||!name||!pw||id==='admin')return toast('กรอกข้อมูลให้ครบ (รหัสห้ามเป็น admin)',false);
   if(id!==oid&&students.some(x=>x.id===id))return toast('รหัสนักเรียนซ้ำ',false);
-  if(s){if(oid!==id){sav[id]=sav[oid]||{};delete sav[oid];s.id=id}s.no=no;s.name=name;s.password=pw}
+  if(s){if(oid!==id){sav[id]=sav[oid]||{};delete sav[oid];schol.forEach(x=>{if(x.sid===oid)x.sid=id});s.id=id}s.no=no;s.name=name;s.password=pw}
   else{students.push({id,no,name,password:pw,isTreasurer:false});sav[id]={}}
   save();closeM();render();toast('บันทึกข้อมูลนักเรียนแล้ว')}}
 $('bAddS').onclick=()=>stuForm();
 function toggleTr(id){const s=students.find(x=>x.id===id);if(s){s.isTreasurer=!s.isTreasurer;save();render()}}
-function delStu(id){const s=students.find(x=>x.id===id);confirmM('ลบนักเรียน?',`ลบข้อมูลของ ${s?s.name:''} และยอดออมทั้งหมด?`,()=>{students=students.filter(x=>x.id!==id);delete sav[id];save();render();toast('ลบแล้ว')})}
+function delStu(id){const s=students.find(x=>x.id===id);confirmM('ลบนักเรียน?',`ลบข้อมูลของ ${s?s.name:''} และยอดออมทั้งหมด?`,()=>{students=students.filter(x=>x.id!==id);delete sav[id];schol=schol.filter(x=>x.sid!==id);save();render();toast('ลบแล้ว')})}
 
 // import
 $('bImp').onclick=()=>openM(`<h3 class="font-bold text-emerald-600 mb-1">📥 นำเข้ารายชื่อ</h3><p class="text-xs text-gray-500 mb-2">คอลัมน์: เลขที่, รหัสนักเรียน, ชื่อ-นามสกุล, ยอดฝากสัปดาห์ที่เลือก</p><input id="iF" type="file" accept=".csv,.xlsx,.xls" class="text-xs mb-2 w-full"><textarea id="iP" rows="4" class="w-full border-2 border-emerald-200 rounded-2xl p-2 text-xs font-mono" placeholder="หรือวางข้อมูลจาก Google Sheets ที่นี่"></textarea><div class="flex gap-2 mt-3"><button class="btn w-1/2 border-2 border-gray-200" onclick="closeM()">ยกเลิก</button><button id="iOk" class="btn w-1/2 bg-emerald-500 text-white">นำเข้า</button></div>`);
@@ -277,14 +280,14 @@ function doImport(rows){let n=0;rows.forEach(r=>{if(!r||r.length<3)return;const 
 let pushT=null,pushing=false,dirty=false;
 const hhmm=()=>new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 function setBadge(t,c){const b=$('sync');if(b){b.className='px-3 py-1.5 rounded-full font-bold text-xs '+c;b.textContent=t}}
-const snapshot=()=>JSON.stringify({key:SYNC_KEY,updated:meta.updated,data:{students,TM:(stash(),TM),tpw}});
+const snapshot=()=>JSON.stringify({key:SYNC_KEY,updated:meta.updated,data:{students,TM:(stash(),TM),tpw,schol}});
 function schedulePush(){dirty=true;setBadge('⏳ กำลังบันทึกลง Google Drive...','bg-amber-100 text-amber-700');clearTimeout(pushT);pushT=setTimeout(push,800)}
 async function push(){if(pushing){pushT=setTimeout(push,800);return}pushing=true;dirty=false;
  try{const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:snapshot()});const j=await r.json();if(!j.ok)throw new Error(j.error||'error');
   if(!dirty)setBadge('☁️ บันทึกลง Google Drive แล้ว '+hhmm(),'bg-emerald-100 text-emerald-700')}
  catch(e){dirty=true;setBadge('⚠️ ซิงก์ไม่สำเร็จ กำลังลองใหม่...','bg-red-100 text-red-600');clearTimeout(pushT);pushT=setTimeout(push,10000)}
  finally{pushing=false}}
-function applyRemote(d){students=d.students||students;tpw=d.tpw||tpw;
+function applyRemote(d){students=d.students||students;tpw=d.tpw||tpw;schol=d.schol||schol;
  if(d.TM&&d.TM.list&&d.TM.list.length){TM=d.TM;loadTerm(TM.cur)}
  else{sav=d.sav||sav;exps=d.exps||exps;fees=d.fees||fees;if(!fees.tuition)fees.tuition={};if(!fees.pta)fees.pta={};
   if(d.ac){const t=TM.list.find(x=>x.id===TM.cur);t.semester=d.ac.semester;t.year=d.ac.year;ac={...d.ac}}stash()}}
@@ -354,6 +357,24 @@ function expXlsx(){if(!isT())return;const rows=[[`รายงานสรุป
 async function expPng(){if(!isT())return;toast('กำลังสร้างรูปภาพ...');const c=await html2canvas($('area'),{scale:2,backgroundColor:'#ffffff'});c.toBlob(b=>dl(`savings_week${week}.png`,b),'image/png')}
 async function expPdf(){if(!isT())return;toast('กำลังสร้าง PDF...');const b=await html2pdf().set({margin:.3,image:{type:'jpeg',quality:.98},html2canvas:{scale:2},jsPDF:{unit:'in',format:'a4',orientation:'landscape'}}).from($('area')).outputPdf('blob');dl(`savings_week${week}.pdf`,b)}
 
+// ===== ทุนการศึกษา (ครู: เพิ่ม/แก้ไข/ลบ · นักเรียน: ดูของตัวเอง) =====
+const SCH_TYPES={continuous:'🔁 ต่อเนื่อง',once:'1️⃣ ไม่ต่อเนื่อง'};
+function schRender(){const box=$('schBox');if(!box)return;const T=isT();
+ const stOf=id=>students.find(z=>z.id===id)||{no:999,name:'(นักเรียนถูกลบ)'};
+ const list=schol.filter(x=>T||x.sid===me.id).sort((a,b)=>(Number(stOf(a.sid).no)||999)-(Number(stOf(b.sid).no)||999));
+ const tot=list.reduce((a,x)=>a+(Number(x.amount)||0),0),f=n=>n.toLocaleString('th-TH',{minimumFractionDigits:2});
+ const badge=t=>t==='continuous'?"<span class='px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold'>🔁 ต่อเนื่อง</span>":"<span class='px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold'>1️⃣ ไม่ต่อเนื่อง</span>";
+ const rows=list.map(x=>{const s=stOf(x.sid);return `<tr><td class='text-center text-gray-500'>${s.no===999?'-':s.no}</td><td class='font-bold'>${esc(s.name)}</td><td>${esc(x.name)}</td><td class='text-center'>${badge(x.type)}</td><td class='text-right font-bold text-emerald-600'>${f(Number(x.amount)||0)}</td>${T?`<td class='text-center whitespace-nowrap'><button class='btn bg-pink-100 text-pink-600 !px-2' onclick="schForm('${x.id}')">✏️</button> <button class='btn bg-red-100 text-red-500 !px-2' onclick="schDel('${x.id}')">🗑️</button></td>`:''}</tr>`}).join('')||`<tr><td colspan='6' class='text-center text-gray-400 py-4'>${T?'ยังไม่มีข้อมูลการรับทุน':'ยังไม่มีข้อมูลการรับทุนของคุณ'}</td></tr>`;
+ box.innerHTML=`<div class='space-y-3'><div class='flex flex-wrap justify-between items-center gap-2'><div><b class='text-indigo-600'>🎓 ข้อมูลการรับทุนการศึกษา</b><div class='text-xs text-gray-500'>${T?`ทั้งหมด ${list.length} ทุน · นักเรียนได้รับทุน ${new Set(list.map(x=>x.sid)).size} คน · ยอดรวม ${f(tot)} บาท`:`ทุนของคุณ ${list.length} ทุน · ยอดรวม ${f(tot)} บาท (ดูได้อย่างเดียว)`}</div></div>${T?"<button class='btn bg-indigo-500 text-white' onclick='schForm()'>➕ เพิ่มข้อมูลทุน</button>":''}</div><div class='bg-white rounded-2xl p-3 border-2 border-indigo-100 overflow-x-auto'><table class='w-full text-sm min-w-[620px]'><thead><tr class='bg-indigo-100 text-indigo-700 text-xs'><th>เลขที่</th><th class='text-left'>ชื่อ-นามสกุล</th><th class='text-left'>ชื่อทุน</th><th>ประเภททุน</th><th class='text-right'>ยอดที่ได้รับ (บาท)</th>${T?'<th>จัดการ</th>':''}</tr></thead><tbody class='divide-y divide-indigo-50'>${rows}</tbody></table></div></div>`}
+function schForm(id){if(!isT())return;if(!students.length)return toast('ยังไม่มีนักเรียนในระบบ',false);const r=id?schol.find(x=>x.id===id):null;
+ openM(`<h3 class='font-bold text-indigo-600 mb-3'>🎓 ${r?'แก้ไข':'เพิ่ม'}ข้อมูลทุน</h3><div class='space-y-3'><select id='cS' class='inp'>${[...students].sort((a,b)=>a.no-b.no).map(s=>`<option value='${esc(s.id)}'>${s.no}. ${esc(s.name)}</option>`).join('')}</select><input id='cN' class='inp' maxlength='100' placeholder='ชื่อทุน' value='${r?esc(r.name):''}'><select id='cT' class='inp'><option value='continuous'>🔁 ทุนต่อเนื่อง</option><option value='once'>1️⃣ ทุนไม่ต่อเนื่อง</option></select><input id='cA' type='number' min='0' step='0.01' class='inp' placeholder='ยอดที่ได้รับ (บาท)' value='${r?r.amount:''}'><div class='flex gap-2'><button class='btn w-1/2 border-2 border-gray-200' onclick='closeM()'>ยกเลิก</button><button id='cOk' class='btn w-1/2 bg-indigo-500 text-white'>บันทึก</button></div></div>`);
+ if(r){$('cS').value=r.sid;$('cT').value=r.type}
+ $('cOk').onclick=()=>{const sid=$('cS').value,name=$('cN').value.trim(),type=$('cT').value,a=parseFloat($('cA').value);
+  if(!name)return toast('กรอกชื่อทุน',false);if(!(a>=0))return toast('กรอกยอดที่ได้รับให้ถูกต้อง',false);
+  if(r){r.sid=sid;r.name=name;r.type=type;r.amount=a}else schol.push({id:'s'+Date.now(),sid,name,type,amount:a});
+  save();closeM();render();toast('บันทึกข้อมูลทุนแล้ว')}}
+function schDel(id){if(!isT())return;const r=schol.find(x=>x.id===id);if(!r)return;confirmM('ลบข้อมูลทุน?',`ลบทุน "${r.name}" ของ ${(students.find(z=>z.id===r.sid)||{name:'นักเรียน'}).name}?`,()=>{schol=schol.filter(x=>x.id!==id);save();render();toast('ลบข้อมูลทุนแล้ว')})}
+
 // ===== จัดการภาคเรียน (ครู: เพิ่ม/แก้ไข/ลบ/เลือกใช้) =====
 function termMgr(){if(!isT())return;
  const rows=TM.list.map(t=>`<div class='flex items-center justify-between gap-2 rounded-2xl border-2 ${t.id===TM.cur?'border-purple-300 bg-purple-50':'border-gray-100'} p-2'><div class='text-sm font-bold'>ภาคเรียนที่ ${esc(t.semester)}/${esc(t.year)} ${t.id===TM.cur?"<span class='text-[10px] bg-purple-500 text-white px-2 rounded-full'>ใช้งานอยู่</span>":''}</div><div class='whitespace-nowrap'>${t.id!==TM.cur?`<button class='btn bg-emerald-100 text-emerald-700 !px-2' onclick="termUse('${t.id}')">เลือกใช้</button> `:''}<button class='btn bg-pink-100 text-pink-600 !px-2' onclick="termForm('${t.id}')">✏️</button> <button class='btn bg-red-100 text-red-500 !px-2' onclick="termDel('${t.id}')">🗑️</button></div></div>`).join('');
@@ -384,7 +405,7 @@ if(SYNC_URL){const lb=$('loginForm').querySelector('button');lb.disabled=true;lb
  window.addEventListener('pagehide',()=>{if(dirty)try{navigator.sendBeacon(SYNC_URL,new Blob([snapshot()],{type:'text/plain'}))}catch(e){}})}
 window.addEventListener('pagehide',doSave);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)doSave()});
-window.addEventListener('storage',e=>{if(![K.st,K.tm,K.tp].includes(e.key))return;students=store.get(K.st,students);tpw=store.get(K.tp,tpw);const t=store.get(K.tm,null);if(t&&t.list&&t.list.length){TM=t;loadTerm(TM.cur)}render();toast('อัปเดตข้อมูลจากหน้าต่างอื่นแล้ว')});
+window.addEventListener('storage',e=>{if(![K.st,K.tm,K.tp,K.sc].includes(e.key))return;students=store.get(K.st,students);tpw=store.get(K.tp,tpw);schol=store.get(K.sc,schol);const t=store.get(K.tm,null);if(t&&t.list&&t.list.length){TM=t;loadTerm(TM.cur)}render();toast('อัปเดตข้อมูลจากหน้าต่างอื่นแล้ว')});
 </script>
 </body>
 </html>
