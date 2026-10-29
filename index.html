@@ -32,7 +32,7 @@ th,td{padding:.6rem .7rem}
  <div class="card p-8 w-full max-w-sm shadow-2xl text-center">
   <div class="text-6xl mb-2">🐱</div>
   <h1 class="text-2xl font-bold text-pink-500">เข้าสู่ระบบออมเงิน</h1>
-  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · เป้าหมาย 10 บาท/สัปดาห์</p>
+  <p class="text-xs text-gray-500 mb-5">ภาคเรียนที่ <span class="sem"></span> ปีการศึกษา <span class="yr"></span> · ออมสินห้องเรียน</p>
   <form id="loginForm" class="space-y-3 text-left">
    <input id="lu" class="inp" placeholder="รหัสนักเรียน / ชื่อผู้ใช้" required>
    <input id="lp" type="password" class="inp" placeholder="รหัสผ่าน" required>
@@ -137,8 +137,8 @@ th,td{padding:.6rem .7rem}
 
 <script>
 // ===== ตั้งค่า Google Drive Sync (วาง URL ของ Apps Script และรหัสลับที่ตั้งใน Code.gs) =====
-const SYNC_URL='';
-const SYNC_KEY='';
+const SYNC_URL='https://script.google.com/macros/s/AKfycbztI2Tx-AcF3x-MYO8BvnIFCEIM67c1F7WNILKjtaJbZ0nXuKXjEzyEAb0El_2yA2SS/exec';
+const SYNC_KEY='Aungkana_5044';
 const K={st:'cls_students',sv:'cls_savings',ex:'cls_expenses',ac:'cls_academic',tp:'cls_teacherpw',fe:'cls_fees',tm:'cls_terms',sc:'cls_scholar'};
 const FEES={tuition:{label:'ค่าเทอม',icon:'🏫',target:1000,box:'feeTui'},pta:{label:'ค่าสมาคมผู้ปกครอง',icon:'🤝',target:200,box:'feePta'}};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
