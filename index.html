@@ -83,6 +83,8 @@ th,td{padding:.6rem .7rem}
   <button data-t="tTrn" class="btn tab py-3 text-sm">🧑‍🏫 การอบรม</button>
   <button data-t="tGrd" class="btn tab py-3 text-sm">📝 ผลการเรียน</button>
   <button data-t="tDty" class="btn tab py-3 text-sm">🧹 จิตอาสา/เวร</button>
+  <button data-t="tHw" class="btn tab py-3 text-sm">⚖️ น้ำหนัก-ส่วนสูง</button>
+  <button data-t="tAdr" class="btn tab py-3 text-sm">🏠 ที่อยู่</button>
   <button data-t="tStu" class="btn tab py-3 text-sm hidden" id="tabStu">👥 รายชื่อ & เหรัญญิก</button>
  </nav>
 
@@ -138,6 +140,8 @@ th,td{padding:.6rem .7rem}
  <section id='tTrn' class='card p-4 hidden'><div id='trnBox'></div></section>
  <section id='tGrd' class='card p-4 hidden'><div id='grdBox'></div></section>
  <section id='tDty' class='card p-4 hidden'><div id='dtyBox'></div></section>
+ <section id='tHw' class='card p-4 hidden'><div id='hwBox'></div></section>
+ <section id='tAdr' class='card p-4 hidden'><div id='adrBox'></div></section>
  <section id='tHis' class='card p-4 hidden'><div id='hisBox'></div></section>
  <section id='tSch' class='card p-4 hidden'><div id='schBox'></div></section>
  <section id='tTui' class='card p-4 hidden'><div id='feeTui'></div></section>
@@ -216,7 +220,7 @@ $('loginForm').onsubmit=e=>{e.preventDefault();const u=$('lu').value.trim(),p=$(
  tab('tSav');remindCheck();toast('ยินดีต้อนรับ '+me.name)};
 $('bOut').onclick=()=>{me=null;$('app').classList.add('hidden');$('login').classList.remove('hidden');$('lu').value='';$('lp').value=''};
 
-function tab(id){if(id==='tStu'&&!isT())id='tSav';['tSav','tExp','tSum','tTui','tPta','tSch','tHis','tTrn','tGrd','tDty','tStu'].forEach(t=>$(t).classList.toggle('hidden',t!==id));
+function tab(id){if(id==='tStu'&&!isT())id='tSav';['tSav','tExp','tSum','tTui','tPta','tSch','tHis','tTrn','tGrd','tDty','tHw','tAdr','tStu'].forEach(t=>$(t).classList.toggle('hidden',t!==id));
  document.querySelectorAll('.tab').forEach(b=>b.className='btn tab py-3 text-sm '+(b.dataset.t===id?'bg-pink-400 text-white shadow':'bg-white text-gray-500')+((b.id==='tabStu'&&!isT())?' hidden':''));render()}
 $('tabs').onclick=e=>{const b=e.target.closest('.tab');if(b)tab(b.dataset.t)};
 
@@ -246,7 +250,7 @@ function render(){
  const ws=[];let mx=1;for(let w=1;w<=week;w++){let t=0;students.forEach(s=>t+=amt(s.id,w));ws.push(t);mx=Math.max(mx,t)}
  $('bars').innerHTML=ws.map((t,i)=>`<div class="flex-1 min-w-[14px] flex flex-col justify-end items-center" title="สัปดาห์ ${i+1}: ${t}฿"><div class="w-full bg-pink-300 rounded-t" style="height:${Math.round(t/mx*100)}%"></div><div class="text-[9px] text-gray-400">${i+1}</div></div>`).join('');
  // students
- feeRender();schRender();hisRender();trnRender();grdRender();dtyRender();notifRender();drawCharts(ws);if(isT())$('stb').innerHTML=list.map(s=>`<tr><td class="text-center">${s.no}</td><td class="text-center font-mono text-xs">${esc(s.id)}</td><td class="font-bold">${esc(s.name)}</td><td class="text-center font-mono text-xs text-pink-500">${esc(s.password)}</td><td class="text-center"><button class="btn ${s.isTreasurer?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-400'}" onclick="toggleTr('${esc(s.id)}')">${s.isTreasurer?'👑 เหรัญญิก':'🎒 ทั่วไป'}</button></td><td class="text-center whitespace-nowrap"><button class="btn bg-pink-100 text-pink-600 !px-2" onclick="stuForm('${esc(s.id)}')">✏️</button> <button class="btn bg-red-100 text-red-500 !px-2" onclick="delStu('${esc(s.id)}')">🗑️</button></td></tr>`).join('');
+ feeRender();schRender();hisRender();trnRender();grdRender();dtyRender();hwRender();adrRender();notifRender();drawCharts(ws);if(isT())$('stb').innerHTML=list.map(s=>`<tr><td class="text-center">${s.no}</td><td class="text-center font-mono text-xs">${esc(s.id)}</td><td class="font-bold">${esc(s.name)}</td><td class="text-center font-mono text-xs text-pink-500">${esc(s.password)}</td><td class="text-center"><button class="btn ${s.isTreasurer?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-400'}" onclick="toggleTr('${esc(s.id)}')">${s.isTreasurer?'👑 เหรัญญิก':'🎒 ทั่วไป'}</button></td><td class="text-center whitespace-nowrap"><button class="btn bg-pink-100 text-pink-600 !px-2" onclick="stuForm('${esc(s.id)}')">✏️</button> <button class="btn bg-red-100 text-red-500 !px-2" onclick="delStu('${esc(s.id)}')">🗑️</button></td></tr>`).join('');
 }
 
 // savings actions
@@ -287,7 +291,7 @@ function stuForm(oid){const s=oid?students.find(x=>x.id===oid):null;
   save();closeM();render();toast('บันทึกข้อมูลนักเรียนแล้ว')}}
 $('bAddS').onclick=()=>stuForm();
 function toggleTr(id){const s=students.find(x=>x.id===id);if(s){s.isTreasurer=!s.isTreasurer;save();render()}}
-function delStu(id){const s=students.find(x=>x.id===id);confirmM('ลบนักเรียน?',`ลบข้อมูลของ ${s?s.name:''} และยอดออมทั้งหมด?`,()=>{students=students.filter(x=>x.id!==id);delete sav[id];schol=schol.filter(x=>x.sid!==id);save();render();toast('ลบแล้ว')})}
+function delStu(id){const s=students.find(x=>x.id===id);confirmM('ลบนักเรียน?',`ลบข้อมูลของ ${s?s.name:''} และยอดออมทั้งหมด?`,()=>{students=students.filter(x=>x.id!==id);delete sav[id];schol=schol.filter(x=>x.sid!==id);X.prof=X.prof.filter(x=>x.sid!==id);save();render();toast('ลบแล้ว')})}
 
 // import
 $('bImp').onclick=()=>openM(`<h3 class="font-bold text-emerald-600 mb-1">📥 นำเข้ารายชื่อ</h3><p class="text-xs text-gray-500 mb-2">คอลัมน์: เลขที่, รหัสนักเรียน, ชื่อ-นามสกุล, ยอดฝากสัปดาห์ที่เลือก</p><input id="iF" type="file" accept=".csv,.xlsx,.xls" class="text-xs mb-2 w-full"><textarea id="iP" rows="4" class="w-full border-2 border-emerald-200 rounded-2xl p-2 text-xs font-mono" placeholder="หรือวางข้อมูลจาก Google Sheets ที่นี่"></textarea><div class="flex gap-2 mt-3"><button class="btn w-1/2 border-2 border-gray-200" onclick="closeM()">ยกเลิก</button><button id="iOk" class="btn w-1/2 bg-emerald-500 text-white">นำเข้า</button></div>`);
@@ -387,7 +391,7 @@ const SOFT_MB=25;
 let archiving=false,ckT=null;
 function allFiles(){stash();const o=[];const w=a=>(a||[]).forEach(f=>{if(f)o.push(f)});
  Object.values(TM.data).forEach(d=>Object.values(d.fees||{}).forEach(m=>Object.values(m||{}).forEach(r=>{if(r&&r.proof)w([r.proof])})));
- X.train.forEach(r=>w(r.files));X.grades.forEach(r=>{w(r.files);if(r.report)w(r.report.files)});X.duty.forEach(r=>w(r.files));return o}
+ X.train.forEach(r=>w(r.files));X.grades.forEach(r=>{w(r.files);if(r.report)w(r.report.files)});X.duty.forEach(r=>w(r.files));X.prof.forEach(p=>{if(p.addr){w(p.addr.ext);w(p.addr.int)}});return o}
 async function fileData(f){if(f.data)return f.data;if(!SYNC_URL||!f.drive)throw new Error('nofile');
  const r=await fetch(SYNC_URL+'?key='+encodeURIComponent(SYNC_KEY)+'&action=file&id='+encodeURIComponent(f.drive),{cache:'no-store'}),j=await r.json();if(!j.ok)throw new Error(j.error);return `data:${j.type};base64,${j.data}`}
 const thumbOf=d=>new Promise(ok=>{const im=new Image;im.onload=()=>{const k=Math.min(1,96/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.5))};im.onerror=()=>ok('');im.src=d});
@@ -611,6 +615,15 @@ function termDel(id){if(!isT())return;const t=TM.list.find(x=>x.id===id);if(!t)r
 $('bTerm').onclick=termMgr;
 
 termText();doSave();
+// ===== น้ำหนัก-ส่วนสูง / ที่อยู่ (รายบุคคล ยกไปทุกภาคเรียน) =====
+$('bTerm').onclick=termMgr;
+
+// ===== น้ำหนัก-ส่วนสูง / ที่อยู่ ... (โค้ดที่วางใหม่) =====
+...
+function adrForm(sid){ ... }
+
+termText();doSave();
+if(SYNC_URL){...
 if(SYNC_URL){const lb=$('loginForm').querySelector('button');lb.disabled=true;lb.textContent='กำลังโหลดข้อมูลจาก Google Drive...';
  pull(true).finally(()=>{lb.disabled=false;lb.textContent='เข้าสู่ระบบ ✨'});
  setInterval(()=>pull(false),20000);
