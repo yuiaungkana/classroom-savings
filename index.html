@@ -426,12 +426,63 @@ const shuf=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ra
 const snapX=()=>JSON.stringify(X),undoX=sn=>{const o=JSON.parse(sn);Object.keys(XK).forEach(k=>X[k]=o[k])};
 function notify(to,text){X.notifs.unshift({id:uid('n'),to,text,date:nowS(),read:false})}
 function commit(sn){if(save())return true;undoX(sn);save();render();toast('พื้นที่จัดเก็บเต็ม ลดจำนวน/ขนาดไฟล์แล้วลองใหม่',false);return false}
-function readFiles(inp){return Promise.all([...inp.files].slice(0,3).map(f=>new Promise((ok,no)=>{
- if(f.type.startsWith('image/')){const im=new Image,u=URL.createObjectURL(f);im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok({name:f.name.replace(/\.\w+$/,'')+'.jpg',type:'image/jpeg',data:c.toDataURL('image/jpeg',.8)})};im.onerror=()=>no(1);im.src=u}
+function scanCanvas(src){
+ const W=src.width,H=src.height,sc=Math.min(1,320/Math.max(W,H)),w=Math.max(8,Math.round(W*sc)),h=Math.max(8,Math.round(H*sc));
+ const sm=document.createElement('canvas');sm.width=w;sm.height=h;const sx=sm.getContext('2d');sx.drawImage(src,0,0,w,h);
+ const d=sx.getImageData(0,0,w,h).data,g=new Uint8Array(w*h),hist=new Array(256).fill(0);
+ for(let i=0;i<w*h;i++){const v=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;g[i]=v;hist[v]++}
+ let tot=w*h,sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];
+ let sB=0,wB=0,best=0,th=128;
+ for(let i=0;i<256;i++){wB+=hist[i];if(!wB)continue;const wF=tot-wB;if(!wF)break;sB+=i*hist[i];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;th=i}}
+ const lab=new Int32Array(w*h),st=new Int32Array(w*h);let L=0,bestN=0,bestL=0;
+ for(let s=0;s<w*h;s++){if(g[s]<=th||lab[s])continue;L++;let n=0,sp=0;st[sp++]=s;lab[s]=L;
+  while(sp){const p=st[--sp];n++;const x=p%w,y=(p/w)|0;
+   if(x>0&&g[p-1]>th&&!lab[p-1]){lab[p-1]=L;st[sp++]=p-1}
+   if(x<w-1&&g[p+1]>th&&!lab[p+1]){lab[p+1]=L;st[sp++]=p+1}
+   if(y>0&&g[p-w]>th&&!lab[p-w]){lab[p-w]=L;st[sp++]=p-w}
+   if(y<h-1&&g[p+w]>th&&!lab[p+w]){lab[p+w]=L;st[sp++]=p+w}}
+  if(n>bestN){bestN=n;bestL=L}}
+ let q=[[0,0],[W,0],[W,H],[0,H]],warp=false;
+ if(bestN>=w*h*.15){
+  let tl=[1e9,0,0],br=[-1e9,0,0],tr=[-1e9,0,0],bl=[1e9,0,0];
+  for(let p=0;p<w*h;p++){if(lab[p]!==bestL)continue;const x=p%w,y=(p/w)|0,a=x+y,b=x-y;
+   if(a<tl[0])tl=[a,x,y];if(a>br[0])br=[a,x,y];if(b>tr[0])tr=[b,x,y];if(b<bl[0])bl=[b,x,y]}
+  const P=[tl,tr,br,bl].map(t=>[(t[1]+.5)/sc,(t[2]+.5)/sc]);
+  let ar=0;for(let i=0;i<4;i++){const a=P[i],b=P[(i+1)%4];ar+=a[0]*b[1]-b[0]*a[1]}ar=Math.abs(ar)/2;
+  if(ar>W*H*.15&&bestN/(sc*sc)/ar>.7){q=P;warp=true}}
+ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+ let oW=Math.max(dist(q[0],q[1]),dist(q[3],q[2])),oH=Math.max(dist(q[0],q[3]),dist(q[1],q[2]));
+ const k=Math.min(1,1600/Math.max(oW,oH));oW=Math.max(8,Math.round(oW*k));oH=Math.max(8,Math.round(oH*k));
+ const [p0,p1,p2,p3]=q,sxs=p0[0]-p1[0]+p2[0]-p3[0],sys=p0[1]-p1[1]+p2[1]-p3[1];
+ let a,b,c=p0[0],dd,e,f=p0[1],gg=0,hh=0;
+ if(Math.abs(sxs)<1e-6&&Math.abs(sys)<1e-6){a=p1[0]-p0[0];b=p3[0]-p0[0];dd=p1[1]-p0[1];e=p3[1]-p0[1]}
+ else{const dx1=p1[0]-p2[0],dx2=p3[0]-p2[0],dy1=p1[1]-p2[1],dy2=p3[1]-p2[1],den=dx1*dy2-dx2*dy1;
+  gg=(sxs*dy2-dx2*sys)/den;hh=(dx1*sys-sxs*dy1)/den;
+  a=p1[0]-p0[0]+gg*p1[0];b=p3[0]-p0[0]+hh*p3[0];dd=p1[1]-p0[1]+gg*p1[1];e=p3[1]-p0[1]+hh*p3[1]}
+ const sd=src.getContext('2d').getImageData(0,0,W,H).data,out=new ImageData(oW,oH),o=out.data;
+ for(let Y=0;Y<oH;Y++)for(let X=0;X<oW;X++){
+  const u=(X+.5)/oW,v=(Y+.5)/oH,z=gg*u+hh*v+1;
+  let x=(a*u+b*v+c)/z-.5,y=(dd*u+e*v+f)/z-.5;
+  x=Math.min(W-1.001,Math.max(0,x));y=Math.min(H-1.001,Math.max(0,y));
+  const x0=x|0,y0=y|0,fx=x-x0,fy=y-y0,i00=(y0*W+x0)*4,i10=i00+4,i01=i00+W*4,i11=i01+4,oi=(Y*oW+X)*4;
+  for(let ch=0;ch<3;ch++)o[oi+ch]=(sd[i00+ch]*(1-fx)+sd[i10+ch]*fx)*(1-fy)+(sd[i01+ch]*(1-fx)+sd[i11+ch]*fx)*fy;
+  o[oi+3]=255}
+ const oc=document.createElement('canvas');oc.width=oW;oc.height=oH;oc.getContext('2d').putImageData(out,0,0);
+ // ปรับแสงให้เรียบ + เพิ่มคอนทราสต์ให้ตัวอักษรคมชัด
+ const bs=document.createElement('canvas');bs.width=Math.max(2,Math.ceil(oW/16));bs.height=Math.max(2,Math.ceil(oH/16));
+ bs.getContext('2d').drawImage(oc,0,0,bs.width,bs.height);
+ const bg=document.createElement('canvas');bg.width=oW;bg.height=oH;const bx=bg.getContext('2d');bx.imageSmoothingQuality='high';bx.drawImage(bs,0,0,oW,oH);
+ const bd=bx.getImageData(0,0,oW,oH).data;
+ for(let i=0;i<o.length;i+=4)for(let ch=0;ch<3;ch++){let v=o[i+ch]/Math.max(bd[i+ch],1)*255;v=(v-50)*255/185;o[i+ch]=v<0?0:v>255?255:v}
+ oc.getContext('2d').putImageData(out,0,0);return oc}
+function readFiles(inp){const sc=!!($('fScan')&&$('fScan').checked);return Promise.all([...inp.files].slice(0,3).map(f=>new Promise((ok,no)=>{
+ if(f.type.startsWith('image/')){const im=new Image,u=URL.createObjectURL(f);im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);let o=c;if(sc){try{o=scanCanvas(c)}catch(e){o=c}}ok({name:f.name.replace(/\.\w+$/,'')+'.jpg',type:'image/jpeg',data:o.toDataURL('image/jpeg',.8)})};im.onerror=()=>no(1);im.src=u}
  else if(f.type==='application/pdf'&&f.size<=3145728){const r=new FileReader;r.onload=()=>ok({name:f.name,type:f.type,data:r.result});r.onerror=no;r.readAsDataURL(f)}
  else no(1)})))}
 async function getFiles(old){let fs=old||[];if($('fX')&&$('fX').checked)fs=[];const i=$('fF');if(i&&i.files.length){try{fs=[...fs,...await readFiles(i)].slice(0,6)}catch(e){toast('ไฟล์ไม่รองรับ (รูปภาพ หรือ PDF ไม่เกิน 3 MB)',false);return null}}return fs}
 const fileInp="<input id='fF' type='file' multiple accept='.png,.jpg,.jpeg,.webp,.pdf' class='text-xs w-full'>";
+const scanBox="<label class='flex items-center gap-2 text-xs font-bold text-teal-700 bg-teal-50 rounded-xl px-2 py-1'><input id='fScan' type='checkbox' checked> 📄 สแกนเอกสารอัตโนมัติ (ตัดขอบ/ปรับมุม/ทำให้คมชัด)</label>";
+const fileInpS=fileInp+scanBox;
 const clrBox=r=>r&&r.files&&r.files.length?`<label class='text-xs'><input id='fX' type='checkbox'> ล้างไฟล์เดิม (${r.files.length})</label>`:'';
 function thumbs(fs){return (fs||[]).map(f=>{FR.push(f);const n=FR.length-1;return f.type.startsWith('image/')?`<img src='${f.data||f.thumb||""}' onclick='viewF(${n})' class='h-14 w-14 object-cover rounded-lg border cursor-pointer'>`:`<button class='btn bg-indigo-100 text-indigo-600 !px-2' onclick='viewF(${n})'>📄 ${esc(f.name.slice(0,14))}</button>`}).join('')}
 async function viewF(n){const f=FR[n];if(!f)return;let d=f.data;
@@ -479,7 +530,7 @@ function callPick(id){if(!isT())return;const c=X.calls.find(x=>x.id===id);if(!c)
   sel.filter(x=>!prev.includes(x)).forEach(x=>notify(x,`🎉 คุณได้รับคัดเลือกเข้าร่วม "${c.title}" วันที่ ${fmtD(c.date)}`));
   c.selected=sel;c.announced=true;save();closeM();render();toast(`แจ้งผลให้ ${sel.length} คนแล้ว`)}}
 function trnForm(id){const r=id?X.train.find(x=>x.id===id):null;if(r&&!(isT()||r.sid===me.id))return;
- openM(`<h3 class='font-bold text-purple-600 mb-3'>🧑‍🏫 ${r?'แก้ไข':'เพิ่ม'}ข้อมูลการอบรม</h3><div class='space-y-3'>${isT()?`<select id='fS' class='inp'>${stuOpts(r?r.sid:'')}</select>`:''}${termFields(r)}<input id='fD' type='date' class='inp' value='${r?r.date:today()}'><input id='fT' class='inp' maxlength='150' placeholder='เรื่องที่อบรม' value='${r?esc(r.title):''}'><div class='text-xs font-bold'>แนบเกียรติบัตร/รูปกิจกรรม (รูปภาพ หรือ PDF ไม่เกิน 3 MB)</div>${clrBox(r)}${fileInp}${btns('bg-purple-500','บันทึก')}</div>`);termSet(r);
+ openM(`<h3 class='font-bold text-purple-600 mb-3'>🧑‍🏫 ${r?'แก้ไข':'เพิ่ม'}ข้อมูลการอบรม</h3><div class='space-y-3'>${isT()?`<select id='fS' class='inp'>${stuOpts(r?r.sid:'')}</select>`:''}${termFields(r)}<input id='fD' type='date' class='inp' value='${r?r.date:today()}'><input id='fT' class='inp' maxlength='150' placeholder='เรื่องที่อบรม' value='${r?esc(r.title):''}'><div class='text-xs font-bold'>แนบเกียรติบัตร/รูปกิจกรรม (รูปภาพ หรือ PDF ไม่เกิน 3 MB)</div>${clrBox(r)}${fileInpS}${btns('bg-purple-500','บันทึก')}</div>`);termSet(r);
  $('fOk').onclick=async()=>{const t=termGet(),title=$('fT').value.trim(),sid=isT()?$('fS').value:me.id;if(!t||!title||!sid)return bad('กรอกภาคเรียน ปีการศึกษา (4 หลัก) และเรื่องให้ครบ');
   const files=await getFiles(r&&r.files);if(!files)return;const sn=snapX();
   if(r)Object.assign(r,{sid,sem:t.sem,year:t.year,date:$('fD').value||today(),title,files});else X.train.push({id:uid('t'),sid,sem:t.sem,year:t.year,date:$('fD').value||today(),title,files});
@@ -498,7 +549,7 @@ function grdRender(){const box=$('grdBox');if(!box)return;const T=isT();
   return `<tr>${T?`<td class='font-bold'>${esc(sName(r.sid))}</td>`:''}<td class='text-center whitespace-nowrap'>${trm(r)}</td><td>${esc(r.subject)}</td><td class='text-center'><span class='px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 font-extrabold'>${esc(r.type)}</span></td><td class='text-center'><span class='px-2 py-0.5 rounded-full ${g[1]} text-xs font-bold'>${g[0]}</span>${rdHtml(r)}</td><td class='text-xs'>${esc(r.note||'')}<div class='flex flex-wrap gap-1'>${thumbs(r.files)}</div></td><td class='text-xs'>${r.report?`${esc(r.report.note||'')}<div class='text-[11px] text-gray-400'>${esc(r.report.date)}</div><div class='flex flex-wrap gap-1'>${thumbs(r.report.files)}</div>`:'-'}</td><td class='text-center'>${act}</td></tr>`}).join('')||"<tr><td colspan='8' class='text-center text-gray-400 py-4'>ไม่มีรายการติด 0 ร มส มผ</td></tr>";
  box.innerHTML=`<div class='space-y-3'><div class='flex flex-wrap justify-between items-center gap-2'><div><b class='text-rose-600'>📝 ผลการเรียน (ติด 0 ร มส มผ)</b><div class='text-xs text-gray-500'>${T?`รอแก้ไข ${nO} · รอครูตรวจ ${nR}`:'นักเรียนแนบใบแก้ผลการเรียนแล้วกด "แจ้งแก้ไขแล้ว" เพื่อแจ้งครู'}</div></div>${T?"<button class='btn bg-rose-500 text-white' onclick='grdForm()'>➕ เพิ่มรายการ</button>":''}</div><div class='bg-white rounded-2xl p-3 border-2 border-rose-100 overflow-x-auto'><table class='w-full text-sm min-w-[860px]'><thead><tr class='bg-rose-100 text-rose-700 text-xs'>${T?"<th class='text-left'>นักเรียน</th>":''}<th>ภาคเรียน/ปี</th><th class='text-left'>รายวิชา</th><th>ผล</th><th>สถานะ</th><th class='text-left'>หมายเหตุ/ไฟล์ครู</th><th class='text-left'>การแจ้งแก้ไขของนักเรียน</th><th>จัดการ</th></tr></thead><tbody class='divide-y divide-rose-50'>${rows}</tbody></table></div></div>`}
 function grdForm(id){if(!isT())return;const r=id?X.grades.find(x=>x.id===id):null;
- openM(`<h3 class='font-bold text-rose-600 mb-3'>📝 ${r?'แก้ไข':'เพิ่ม'}ผลการเรียน</h3><div class='space-y-3'><select id='fS' class='inp'>${stuOpts(r?r.sid:'')}</select>${termFields(r)}<input id='fT' class='inp' maxlength='100' placeholder='รายวิชา (เช่น ค21101 คณิตศาสตร์)' value='${r?esc(r.subject):''}'><select id='fG' class='inp'><option>0</option><option>ร</option><option>มส</option><option>มผ</option></select><textarea id='fN' rows='2' class='inp !rounded-2xl' placeholder='หมายเหตุ/แนวทางแก้ไข'>${r?esc(r.note||''):''}</textarea><div class='text-xs font-bold'>แนบไฟล์/รูปภาพ (ครู)</div>${clrBox(r)}${fileInp}${btns('bg-rose-500','บันทึก')}</div>`);termSet(r);if(r)$('fG').value=r.type;
+ openM(`<h3 class='font-bold text-rose-600 mb-3'>📝 ${r?'แก้ไข':'เพิ่ม'}ผลการเรียน</h3><div class='space-y-3'><select id='fS' class='inp'>${stuOpts(r?r.sid:'')}</select>${termFields(r)}<input id='fT' class='inp' maxlength='100' placeholder='รายวิชา (เช่น ค21101 คณิตศาสตร์)' value='${r?esc(r.subject):''}'><select id='fG' class='inp'><option>0</option><option>ร</option><option>มส</option><option>มผ</option></select><textarea id='fN' rows='2' class='inp !rounded-2xl' placeholder='หมายเหตุ/แนวทางแก้ไข'>${r?esc(r.note||''):''}</textarea><div class='text-xs font-bold'>แนบไฟล์/รูปภาพ (ครู)</div>${clrBox(r)}${fileInpS}${btns('bg-rose-500','บันทึก')}</div>`);termSet(r);if(r)$('fG').value=r.type;
  $('fOk').onclick=async()=>{const t=termGet(),subject=$('fT').value.trim(),sid=$('fS').value;if(!t||!subject||!sid)return bad('กรอกนักเรียน ภาคเรียน ปีการศึกษา (4 หลัก) และรายวิชาให้ครบ');
   const files=await getFiles(r&&r.files);if(!files)return;const sn=snapX(),d={sid,sem:t.sem,year:t.year,subject,type:$('fG').value,note:$('fN').value.trim(),files};
   if(r)Object.assign(r,d);else{X.grades.push({id:uid('g'),...d,status:'open',report:null});notify(sid,`⚠️ ผลการเรียน ${subject} ติด "${d.type}" (${t.sem}/${t.year}) กรุณาแก้ไขและแจ้งครู`)}
@@ -507,7 +558,7 @@ function grdDel(id){if(!isT())return;confirmM('ลบรายการ?','ล�
 function grdSet(id,st){if(!isT())return;const r=X.grades.find(x=>x.id===id);if(!r)return;r.status=st;
  notify(r.sid,st==='done'?`✔ ครูยืนยันแล้ว: ผลการเรียน ${r.subject} (${r.type}) แก้ไขเรียบร้อย`:`↩ ครูส่งกลับ: ผลการเรียน ${r.subject} (${r.type}) ยังต้องแก้ไข/แนบหลักฐานเพิ่ม`);save();render();toast('อัปเดตสถานะแล้ว')}
 function grdReport(id){const r=X.grades.find(x=>x.id===id);if(!r||r.sid!==me.id||r.status!=='open')return;
- openM(`<h3 class='font-bold text-emerald-600 mb-1'>📤 แจ้งแก้ไขผลการเรียนแล้ว</h3><p class='text-xs text-gray-500 mb-3'>${esc(r.subject)} · ผล ${esc(r.type)} — แนบใบแก้ผลการเรียน (รูปภาพ/PDF) อย่างน้อย 1 ไฟล์</p><div class='space-y-3'><textarea id='fN' rows='2' class='inp !rounded-2xl' placeholder='หมายเหตุถึงครู (ถ้ามี)'></textarea>${fileInp}${btns('bg-emerald-500','ส่งให้ครู')}</div>`);
+ openM(`<h3 class='font-bold text-emerald-600 mb-1'>📤 แจ้งแก้ไขผลการเรียนแล้ว</h3><p class='text-xs text-gray-500 mb-3'>${esc(r.subject)} · ผล ${esc(r.type)} — แนบใบแก้ผลการเรียน (รูปภาพ/PDF) อย่างน้อย 1 ไฟล์</p><div class='space-y-3'><textarea id='fN' rows='2' class='inp !rounded-2xl' placeholder='หมายเหตุถึงครู (ถ้ามี)'></textarea>${fileInpS}${btns('bg-emerald-500','ส่งให้ครู')}</div>`);
  $('fOk').onclick=async()=>{const files=await getFiles([]);if(!files)return;if(!files.length)return bad('กรุณาแนบใบแก้ผลการเรียน');const sn=snapX();
   r.report={note:$('fN').value.trim(),date:nowS(),files};r.status='reported';notify('admin',`📤 ${me.name} แจ้งแก้ไขผลการเรียน ${r.subject} (${r.type}) แล้ว รอตรวจสอบ`);
   if(!commit(sn))return;closeM();render();toast('แจ้งครูเรียบร้อยแล้ว')}}
