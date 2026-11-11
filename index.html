@@ -724,7 +724,7 @@ const bakAutoList=()=>store.get('cls_bak_auto',[]);
 function autoBak(label,full){const l=bakAutoList();l.unshift({t:Date.now(),label,json:bakJson(!full)});store.set('cls_bak_auto',l.slice(0,5))}
 function bakRemind(){if(!isT())return;const m=store.get('cls_bakmeta',{last:0}),a=bakAutoList()[0];
  if(Date.now()-m.last>7*864e5)setTimeout(()=>toast('ไม่ได้ดาวน์โหลดไฟล์สำรองเกิน 7 วัน กด 🛟 สำรอง/กู้คืน',false),1500);
- if(!a||Date.now()-a.t>12*36e5)autoBak('อัตโนมัติ')}
+ if(!a||Date.now()-a.t>12*36e5)autoBak('อัตโนมัติ');driveBakAuto()}
 function bakDownload(){const d=new Date(),p=n=>String(n).padStart(2,'0'),
  name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
  dl(name,new Blob([bakJson(false)],{type:'application/json'}));store.set('cls_bakmeta',{last:Date.now()})}
@@ -741,9 +741,29 @@ function bakMgr(){if(!isT())return;const l=bakAutoList(),m=store.get('cls_bakmet
  <button class='btn w-full bg-teal-500 text-white py-3 mb-3' onclick='bakDownload()'>⬇️ ดาวน์โหลดไฟล์สำรอง (.json)</button>
  <div class='border-t pt-3 mb-3'><div class='text-xs font-bold mb-1'>♻️ กู้คืนจากไฟล์</div><input id='bkF' type='file' accept='.json,application/json' class='text-xs w-full mb-2'><button id='bkR' class='btn w-full bg-amber-400 text-white'>กู้คืนจากไฟล์ที่เลือก</button></div>
  <div class='border-t pt-3'><div class='text-xs font-bold mb-1'>🕒 สำรองอัตโนมัติในเครื่อง (ไม่รวมไฟล์แนบ)</div><div class='space-y-1 max-h-[24vh] overflow-y-auto'>${l.map((x,i)=>`<div class='flex justify-between items-center text-xs rounded-xl border p-2'><span>${new Date(x.t).toLocaleString('th-TH')} · ${esc(x.label)} · ${(x.json.length/1024).toFixed(0)} KB</span><button class='btn bg-amber-100 text-amber-700 !px-2' onclick='bakApply(bakAutoList()[${i}].json)'>กู้คืน</button></div>`).join('')||"<div class='text-gray-400 text-center py-2'>ยังไม่มี</div>"}</div></div>
+ <div class='border-t pt-3 mt-3'><div class='text-xs font-bold mb-1'>☁️ สำรองบน Google Drive (อัตโนมัติวันละครั้ง)</div><button class='btn w-full bg-sky-500 text-white mb-2' onclick='driveBak(true).then(bakMgr)'>☁️ สำรองขึ้น Drive ตอนนี้</button><div class='space-y-1 max-h-[24vh] overflow-y-auto'>${bakDriveList().map((x,i)=>`<div class='flex justify-between items-center text-xs rounded-xl border p-2'><span>${new Date(x.t).toLocaleString('th-TH')} · ${x.kb} KB</span><button class='btn bg-amber-100 text-amber-700 !px-2' onclick='bakRestoreDrive(${i})'>กู้คืน</button></div>`).join('')||"<div class='text-gray-400 text-center py-2'>ยังไม่มี</div>"}</div></div>
  <div class='text-right mt-3'><button class='btn border-2 border-gray-200' onclick='closeM()'>ปิด</button></div>`);
  $('bkR').onclick=()=>{const f=$('bkF').files[0];if(!f)return bad('เลือกไฟล์สำรองก่อน');const r=new FileReader();r.onload=()=>bakApply(r.result);r.readAsText(f)}}
 $('bBak').onclick=bakMgr;
+// ===== สำรองขึ้น Google Drive อัตโนมัติ (วันละครั้ง) =====
+const bakDriveList=()=>store.get('cls_bak_drive',[]);
+const toB64=s=>{const b=new TextEncoder().encode(s);let r='';for(let i=0;i<b.length;i+=32768)r+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(r)};
+let bakBusy=false;
+async function driveBak(manual){if(!SYNC_URL||bakBusy)return false;bakBusy=true;
+ try{let js=bakJson(false);if(js.length>15e6)js=bakJson(true);
+  const d=new Date(),p=n=>String(n).padStart(2,'0'),
+  name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
+  const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:SYNC_KEY,action:'putFile',name,type:'application/json',data:toB64(js)})}),j=await r.json();
+  if(!j.ok)throw new Error(j.error||'error');
+  const l=bakDriveList();l.unshift({t:Date.now(),id:j.id,name,kb:Math.round(js.length/1024)});store.set('cls_bak_drive',l.slice(0,30));
+  if(manual)toast('สำรองขึ้น Google Drive แล้ว');return true}
+ catch(e){if(manual)bad('สำรองขึ้น Drive ไม่สำเร็จ ตรวจอินเทอร์เน็ต');return false}
+ finally{bakBusy=false}}
+function driveBakAuto(){if(!SYNC_URL||!isT())return;const a=bakDriveList()[0];if(!a||Date.now()-a.t>24*36e5)driveBak(false)}
+async function bakRestoreDrive(i){const x=bakDriveList()[i];if(!x)return;
+ try{const d=await fileData({drive:x.id}),bin=atob(d.split(',')[1]),u=new Uint8Array(bin.length);
+  for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);bakApply(new TextDecoder().decode(u))}
+ catch(e){bad('โหลดไฟล์สำรองจาก Drive ไม่ได้')}}
 setInterval(()=>{if(me&&isT())bakRemind()},36e5);
  
 termText();doSave();
