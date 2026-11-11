@@ -501,8 +501,10 @@ const bad=m=>toast(m,false);
 // --- แจ้งเตือน
 const myNotifs=()=>X.notifs.filter(n=>n.to===(isT()?'admin':me.id));
 function notifRender(){const n=myNotifs().filter(x=>!x.read).length;$('bellN').textContent=n;$('bBell').className='btn '+(n?'bg-rose-500 text-white':'bg-sky-100 text-sky-700')}
+const notifTab=t=>t.includes('ผลการเรียน')||t.includes('แก้ตัว')||t.includes('เลยกำหนด')?'tGrd':t.includes('น้ำหนัก')?'tHw':t.includes('ที่อยู่')?'tAdr':t.includes('เข้าร่วม')?'tTrn':null;
+function notifGo(id){const n=X.notifs.find(x=>x.id===id);if(!n)return;n.read=true;save();closeM();const t=notifTab(n.text);if(t)tab(t);else render()}
 $('bBell').onclick=()=>{if(!me)return;const L=myNotifs();
- openM(`<h3 class='font-bold text-sky-600 mb-2'>🔔 การแจ้งเตือน</h3><div class='space-y-2 max-h-[55vh] overflow-y-auto'>${L.map(x=>`<div class='rounded-2xl p-2 border-2 ${x.read?'border-gray-100':'border-sky-300 bg-sky-50'} text-sm'>${esc(x.text)}<div class='text-[11px] text-gray-400'>${esc(x.date)}</div></div>`).join('')||"<div class='text-center text-gray-400 py-6'>ไม่มีการแจ้งเตือน</div>"}</div><div class='flex gap-2 mt-3'><button id='nR' class='btn flex-1 bg-sky-500 text-white'>อ่านทั้งหมดแล้ว</button><button class='btn border-2 border-gray-200' onclick='closeM()'>ปิด</button></div>`);
+ openM(`<h3 class='font-bold text-sky-600 mb-2'>🔔 การแจ้งเตือน</h3><div class='space-y-2 max-h-[55vh] overflow-y-auto'>${L.map(x=>`<div onclick="notifGo('${x.id}')" class='cursor-pointer rounded-2xl p-2 border-2 ${x.read?'border-gray-100':'border-sky-300 bg-sky-50'} text-sm'>${esc(x.text)}<div class='text-[11px] text-gray-400'>${esc(x.date)}${notifTab(x.text)?" · <span class='text-sky-600'>แตะเพื่อดู ›</span>":''}</div></div>`).join('')||"<div class='text-center text-gray-400 py-6'>ไม่มีการแจ้งเตือน</div>"}</div><div class='flex gap-2 mt-3'><button id='nR' class='btn flex-1 bg-sky-500 text-white'>อ่านทั้งหมดแล้ว</button><button class='btn border-2 border-gray-200' onclick='closeM()'>ปิด</button></div>`);
  $('nR').onclick=()=>{L.forEach(x=>x.read=true);save();closeM();render()}};
 
 // --- การอบรม
