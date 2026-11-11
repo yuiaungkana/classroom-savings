@@ -721,7 +721,7 @@ function adrForm(sid){if(!(isT()||sid===me.id))return;const s=students.find(x=>x
 const bakJson=strip=>{stash();const o={app:'classroom',ver:1,exported:new Date().toISOString(),data:{students,TM,tpw,schol,X}};
  return JSON.stringify(o,strip?(k,v)=>(k==='data'&&typeof v==='string'&&v.startsWith('data:'))?undefined:v:null)};
 const bakAutoList=()=>store.get('cls_bak_auto',[]);
-function autoBak(label){const l=bakAutoList();l.unshift({t:Date.now(),label,json:bakJson(true)});store.set('cls_bak_auto',l.slice(0,5))}
+function autoBak(label,full){const l=bakAutoList();l.unshift({t:Date.now(),label,json:bakJson(!full)});store.set('cls_bak_auto',l.slice(0,5))}
 function bakRemind(){if(!isT())return;const m=store.get('cls_bakmeta',{last:0}),a=bakAutoList()[0];
  if(Date.now()-m.last>7*864e5)setTimeout(()=>toast('ไม่ได้ดาวน์โหลดไฟล์สำรองเกิน 7 วัน กด 🛟 สำรอง/กู้คืน',false),1500);
  if(!a||Date.now()-a.t>12*36e5)autoBak('อัตโนมัติ')}
@@ -731,7 +731,7 @@ function bakDownload(){const d=new Date(),p=n=>String(n).padStart(2,'0'),
 function bakApply(text){let o;try{o=JSON.parse(text)}catch(e){return bad('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง')}
  const d=o&&o.data;if(!o||o.app!=='classroom'||!d||!Array.isArray(d.students)||!d.TM||!Array.isArray(d.TM.list)||!d.TM.list.length)return bad('ไฟล์นี้ไม่ใช่ไฟล์สำรองของระบบห้องเรียน');
  confirmM('กู้คืนข้อมูล?',`ข้อมูลปัจจุบันจะถูกแทนที่ด้วยไฟล์สำรอง (สำรองเมื่อ ${(o.exported||'').slice(0,16).replace('T',' ')}) ระบบจะเก็บสำเนาปัจจุบันไว้ในรายการสำรองอัตโนมัติก่อน`,()=>{
-  autoBak('ก่อนกู้คืน');
+  autoBak('ก่อนกู้คืน',true);
   students=d.students;tpw=d.tpw||tpw;schol=d.schol||[];
   Object.keys(XK).forEach(k=>X[k]=Array.isArray(d.X&&d.X[k])?d.X[k]:[]);
   TM=d.TM;loadTerm(TM.cur);meta.updated=Date.now();store.set('cls_meta',meta);
