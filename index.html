@@ -725,12 +725,12 @@ function autoBak(label,full){const l=bakAutoList();l.unshift({t:Date.now(),label
 function bakRemind(){if(!isT())return;const m=store.get('cls_bakmeta',{last:0}),a=bakAutoList()[0];
  if(Date.now()-m.last>7*864e5)setTimeout(()=>toast('ไม่ได้ดาวน์โหลดไฟล์สำรองเกิน 7 วัน กด 🛟 สำรอง/กู้คืน',false),1500);
  if(!a||Date.now()-a.t>12*36e5)autoBak('อัตโนมัติ');driveBakAuto()}
-function bakDownload(){const d=new Date(),p=n=>String(n).padStart(2,'0'),
+ function bakDownload(){if(!isT())return;const d=new Date(),p=n=>String(n).padStart(2,'0'),
  name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
  dl(name,new Blob([bakJson(false)],{type:'application/json'}));store.set('cls_bakmeta',{last:Date.now()})}
-function bakApply(text){let o;try{o=JSON.parse(text)}catch(e){return bad('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง')}
+ function bakApply(text){if(!isT())return;let o;try{o=JSON.parse(text)}catch(e){return bad(
  const d=o&&o.data;if(!o||o.app!=='classroom'||!d||!Array.isArray(d.students)||!d.TM||!Array.isArray(d.TM.list)||!d.TM.list.length)return bad('ไฟล์นี้ไม่ใช่ไฟล์สำรองของระบบห้องเรียน');
- confirmM('กู้คืนข้อมูล?',`ข้อมูลปัจจุบันจะถูกแทนที่ด้วยไฟล์สำรอง (สำรองเมื่อ ${(o.exported||'').slice(0,16).replace('T',' ')}) ระบบจะเก็บสำเนาปัจจุบันไว้ในรายการสำรองอัตโนมัติก่อน`,()=>{
+ confirmM('กู้คืนข้อมูล?',`ข้อมูลปัจจุบันจะถูกแทนที่ด้วยไฟล์สำรอง (สำรองเมื่อ ${(o.exported||'').slice(0,16).replace('T',' ')}) ระบบจะเก็บสำเนาปัจจุบันไว้ในรายการสำรองอัตโนมัติก่อน`,()=>{if(!isT())return;
   autoBak('ก่อนกู้คืน',true);
   students=d.students;tpw=d.tpw||tpw;schol=d.schol||[];
   Object.keys(XK).forEach(k=>X[k]=Array.isArray(d.X&&d.X[k])?d.X[k]:[]);
@@ -749,7 +749,7 @@ $('bBak').onclick=bakMgr;
 const bakDriveList=()=>store.get('cls_bak_drive',[]);
 const toB64=s=>{const b=new TextEncoder().encode(s);let r='';for(let i=0;i<b.length;i+=32768)r+=String.fromCharCode.apply(null,b.subarray(i,i+32768));return btoa(r)};
 let bakBusy=false;
-async function driveBak(manual){if(!SYNC_URL||bakBusy)return false;bakBusy=true;
+async function driveBak(manual){if(!isT()||!SYNC_URL||bakBusy)return false;bakBusy=true;
  try{let js=bakJson(false);if(js.length>15e6)js=bakJson(true);
   const d=new Date(),p=n=>String(n).padStart(2,'0'),
   name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
@@ -760,7 +760,7 @@ async function driveBak(manual){if(!SYNC_URL||bakBusy)return false;bakBusy=true;
  catch(e){if(manual)bad('สำรองขึ้น Drive ไม่สำเร็จ ตรวจอินเทอร์เน็ต');return false}
  finally{bakBusy=false}}
 function driveBakAuto(){if(!SYNC_URL||!isT())return;const a=bakDriveList()[0];if(!a||Date.now()-a.t>24*36e5)driveBak(false)}
-async function bakRestoreDrive(i){const x=bakDriveList()[i];if(!x)return;
+async function bakRestoreDrive(i){if(!isT())return;const x=bakDriveList()[i];if(!x)return;
  try{const d=await fileData({drive:x.id}),bin=atob(d.split(',')[1]),u=new Uint8Array(bin.length);
   for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);bakApply(new TextDecoder().decode(u))}
  catch(e){bad('โหลดไฟล์สำรองจาก Drive ไม่ได้')}}
