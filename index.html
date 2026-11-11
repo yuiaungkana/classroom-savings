@@ -63,6 +63,7 @@ th,td{padding:.6rem .7rem}
    <button id="bTerm" class="btn bg-purple-100 text-purple-700 hidden">📅 จัดการภาคเรียน/ปี</button>
    <span id="sync" class="px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs">☁️ บันทึกอัตโนมัติ</span>
    <button id="bStor" class="btn bg-gray-100 text-gray-600 hidden">💾 -</button>
+   <button id="bBak" class="btn bg-teal-100 text-teal-700 hidden">🛟 สำรอง/กู้คืน</button>
    <button id="bBell" class="btn bg-sky-100 text-sky-700">🔔 <span id="bellN">0</span></button>
    <button id="bPw" class="btn bg-yellow-100 text-yellow-800">🔑 เปลี่ยนรหัสผ่าน</button>
    <button id="bOut" class="btn bg-red-100 text-red-500">🚪 ออกจากระบบ</button>
@@ -215,9 +216,9 @@ $('loginForm').onsubmit=e=>{e.preventDefault();const u=$('lu').value.trim(),p=$(
  else{const s=students.find(x=>x.id===u&&x.password===p);if(!s)return toast('รหัสผู้ใช้หรือรหัสผ่านไม่ถูกต้อง',false);me={id:s.id,name:s.name,role:s.isTreasurer?'treasurer':'student'}}
  $('login').classList.add('hidden');$('app').classList.remove('hidden');
  $('uname').textContent=me.name;$('urole').textContent={teacher:'ครูประจำชั้น 👩‍🏫',treasurer:'เหรัญญิก 👑',student:'นักเรียน 🎒'}[me.role];
- $('bTerm').classList.toggle('hidden',!isT());$('bStor').classList.toggle('hidden',!isT());$('tabStu').classList.toggle('hidden',!isT());$('exp').classList.toggle('hidden',!isT());
+ $('bTerm').classList.toggle('hidden',!isT());$('bBak').classList.toggle('hidden',!isT());$('bStor').classList.toggle('hidden',!isT());$('tabStu').classList.toggle('hidden',!isT());$('exp').classList.toggle('hidden',!isT());
  $('bAll').classList.toggle('hidden',!canEdit());$('bAddExp').classList.toggle('hidden',!canEdit());
- tab('tSav');remindCheck();toast('ยินดีต้อนรับ '+me.name)};
+ tab('tSav');remindCheck();bakRemind();toast('ยินดีต้อนรับ '+me.name)};
 $('bOut').onclick=()=>{me=null;$('app').classList.add('hidden');$('login').classList.remove('hidden');$('lu').value='';$('lp').value=''};
 
 function tab(id){if(id==='tStu'&&!isT())id='tSav';['tSav','tExp','tSum','tTui','tPta','tSch','tHis','tTrn','tGrd','tDty','tHw','tAdr','tStu'].forEach(t=>$(t).classList.toggle('hidden',t!==id));
@@ -716,6 +717,35 @@ function adrForm(sid){if(!(isT()||sid===me.id))return;const s=students.find(x=>x
   if(!isT())notify('admin',`🏠 ${me.name} ${o?'แก้ไข':'กรอก'}ข้อมูลที่อยู่: ${ch.join(', ')}`);
   if(!commit(sn))return;closeM();render();toast('บันทึกที่อยู่แล้ว')}}
 
+// ===== สำรอง / กู้คืนข้อมูล =====
+const bakJson=strip=>{stash();const o={app:'classroom',ver:1,exported:new Date().toISOString(),data:{students,TM,tpw,schol,X}};
+ return JSON.stringify(o,strip?(k,v)=>(k==='data'&&typeof v==='string'&&v.startsWith('data:'))?undefined:v:null)};
+const bakAutoList=()=>store.get('cls_bak_auto',[]);
+function autoBak(label){const l=bakAutoList();l.unshift({t:Date.now(),label,json:bakJson(true)});store.set('cls_bak_auto',l.slice(0,5))}
+function bakRemind(){if(!isT())return;const m=store.get('cls_bakmeta',{last:0}),a=bakAutoList()[0];
+ if(Date.now()-m.last>7*864e5)setTimeout(()=>toast('ไม่ได้ดาวน์โหลดไฟล์สำรองเกิน 7 วัน กด 🛟 สำรอง/กู้คืน',false),1500);
+ if(!a||Date.now()-a.t>12*36e5)autoBak('อัตโนมัติ')}
+function bakDownload(){const d=new Date(),p=n=>String(n).padStart(2,'0'),
+ name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
+ dl(name,new Blob([bakJson(false)],{type:'application/json'}));store.set('cls_bakmeta',{last:Date.now()})}
+function bakApply(text){let o;try{o=JSON.parse(text)}catch(e){return bad('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง')}
+ const d=o&&o.data;if(!o||o.app!=='classroom'||!d||!Array.isArray(d.students)||!d.TM||!Array.isArray(d.TM.list)||!d.TM.list.length)return bad('ไฟล์นี้ไม่ใช่ไฟล์สำรองของระบบห้องเรียน');
+ confirmM('กู้คืนข้อมูล?',`ข้อมูลปัจจุบันจะถูกแทนที่ด้วยไฟล์สำรอง (สำรองเมื่อ ${(o.exported||'').slice(0,16).replace('T',' ')}) ระบบจะเก็บสำเนาปัจจุบันไว้ในรายการสำรองอัตโนมัติก่อน`,()=>{
+  autoBak('ก่อนกู้คืน');
+  students=d.students;tpw=d.tpw||tpw;schol=d.schol||[];
+  Object.keys(XK).forEach(k=>X[k]=Array.isArray(d.X&&d.X[k])?d.X[k]:[]);
+  TM=d.TM;loadTerm(TM.cur);meta.updated=Date.now();store.set('cls_meta',meta);
+  save();render();toast('กู้คืนข้อมูลสำเร็จ 🎉 (ถ้าตั้งค่า Drive ไว้ จะซิงก์ขึ้นให้อัตโนมัติ)')})}
+function bakMgr(){if(!isT())return;const l=bakAutoList(),m=store.get('cls_bakmeta',{last:0});
+ openM(`<h3 class='font-bold text-teal-700 mb-1'>🛟 สำรอง / กู้คืนข้อมูล</h3><p class='text-xs text-gray-500 mb-3'>สำรองล่าสุด: ${m.last?new Date(m.last).toLocaleString('th-TH'):'ยังไม่เคย'}<br>ไฟล์แนบที่ย้ายไป Google Drive แล้วจะเก็บอ้างอิงไว้ (ตัวไฟล์ยังอยู่บน Drive)</p>
+ <button class='btn w-full bg-teal-500 text-white py-3 mb-3' onclick='bakDownload()'>⬇️ ดาวน์โหลดไฟล์สำรอง (.json)</button>
+ <div class='border-t pt-3 mb-3'><div class='text-xs font-bold mb-1'>♻️ กู้คืนจากไฟล์</div><input id='bkF' type='file' accept='.json,application/json' class='text-xs w-full mb-2'><button id='bkR' class='btn w-full bg-amber-400 text-white'>กู้คืนจากไฟล์ที่เลือก</button></div>
+ <div class='border-t pt-3'><div class='text-xs font-bold mb-1'>🕒 สำรองอัตโนมัติในเครื่อง (ไม่รวมไฟล์แนบ)</div><div class='space-y-1 max-h-[24vh] overflow-y-auto'>${l.map((x,i)=>`<div class='flex justify-between items-center text-xs rounded-xl border p-2'><span>${new Date(x.t).toLocaleString('th-TH')} · ${esc(x.label)} · ${(x.json.length/1024).toFixed(0)} KB</span><button class='btn bg-amber-100 text-amber-700 !px-2' onclick='bakApply(bakAutoList()[${i}].json)'>กู้คืน</button></div>`).join('')||"<div class='text-gray-400 text-center py-2'>ยังไม่มี</div>"}</div></div>
+ <div class='text-right mt-3'><button class='btn border-2 border-gray-200' onclick='closeM()'>ปิด</button></div>`);
+ $('bkR').onclick=()=>{const f=$('bkF').files[0];if(!f)return bad('เลือกไฟล์สำรองก่อน');const r=new FileReader();r.onload=()=>bakApply(r.result);r.readAsText(f)}}
+$('bBak').onclick=bakMgr;
+setInterval(()=>{if(me&&isT())bakRemind()},36e5);
+ 
 termText();doSave();
 if(SYNC_URL){const lb=$('loginForm').querySelector('button');lb.disabled=true;lb.textContent='กำลังโหลดข้อมูลจาก Google Drive...';
  pull(true).finally(()=>{lb.disabled=false;lb.textContent='เข้าสู่ระบบ ✨'});
