@@ -728,7 +728,7 @@ function bakRemind(){if(!isT())return;const m=store.get('cls_bakmeta',{last:0}),
  function bakDownload(){if(!isT())return;const d=new Date(),p=n=>String(n).padStart(2,'0'),
  name=`classroom_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}.json`;
  dl(name,new Blob([bakJson(false)],{type:'application/json'}));store.set('cls_bakmeta',{last:Date.now()})}
- function bakApply(text){if(!isT())return;let o;try{o=JSON.parse(text)}catch(e){return bad(
+ function bakApply(text){if(!isT())return;let o;try{o=JSON.parse(text)}catch(e){return bad('ไฟล์สำรองไม่ถูกต้อง')}
  const d=o&&o.data;if(!o||o.app!=='classroom'||!d||!Array.isArray(d.students)||!d.TM||!Array.isArray(d.TM.list)||!d.TM.list.length)return bad('ไฟล์นี้ไม่ใช่ไฟล์สำรองของระบบห้องเรียน');
  confirmM('กู้คืนข้อมูล?',`ข้อมูลปัจจุบันจะถูกแทนที่ด้วยไฟล์สำรอง (สำรองเมื่อ ${(o.exported||'').slice(0,16).replace('T',' ')}) ระบบจะเก็บสำเนาปัจจุบันไว้ในรายการสำรองอัตโนมัติก่อน`,()=>{if(!isT())return;
   autoBak('ก่อนกู้คืน',true);
